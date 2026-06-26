@@ -1,0 +1,55 @@
+REPOSITÓRIO: everything-claude-code  (ECC)
+TIPO: Fork Público (espelho do upstream, branch main)
+LINGUAGEM: Shell / TypeScript / Python / Go / Java (multi-linguagem)
+URL (seu fork):    https://github.com/odilsonriquelme/everything-claude-code
+UPSTREAM (fork de): https://github.com/affaan-m/ECC (affaan-m/everything-claude-code)
+LICENÇA: MIT
+
+DESCRIÇÃO
+---------
+"Everything Claude Code" (ECC) — sistema completo de OTIMIZAÇÃO DE PERFORMANCE para
+harnesses de agentes de IA. Não é só um conjunto de configs: reúne skills, instincts,
+otimização de memória, aprendizado contínuo, varredura de segurança e desenvolvimento
+"research-first". Projeto premiado (Anthropic Hackathon Winner), muito popular.
+
+MULTI-HARNESS (funciona em vários agentes)
+-------------------------------------------
+Suporta Claude Code, Codex, Cursor, OpenCode, Gemini e outros. Por isso há pastas de
+configuração dedicadas na raiz: .claude/ .codex/ .cursor/ .gemini/ .opencode/ .trae/
+.kiro/ .codebuddy/ .agents/ — cada uma adapta o sistema para um harness diferente.
+
+Pacotes npm publicados: ecc-universal e ecc-agentshield.
+
+COMPONENTES PRINCIPAIS (pastas funcionais)
+-------------------------------------------
+skills/    (~288 arquivos) → biblioteca enorme de skills (habilidades) para os agentes:
+                             accessibility, agent-eval, agentic-engineering,
+                             ai-first-engineering, agent-payment-x402, etc.
+agents/    (~48 arquivos)  → definições de subagentes especializados (architect,
+                             code-reviewer, code-simplifier, chief-of-staff,
+                             build-error-resolver, code-explorer, etc.)
+commands/  (~79 arquivos)  → slash-commands (code-review, checkpoint, build-fix,
+                             context-budget, cpp-build, etc.)
+rules/     (~89 arquivos)  → regras de código organizadas POR LINGUAGEM (common, cpp,
+                             csharp, dart, golang, java, kotlin, ...)
+hooks/                     → hooks.json + README (automações do harness)
+contexts/                  → contextos de trabalho (dev.md, research.md, review.md)
+plugins/                   → README de plugins
+src/                       → código-fonte (ex.: src/llm)
+schemas/, manifests/, mcp-configs/, scripts/, research/, examples/, contexts/
+
+ARQUIVOS NOTÁVEIS DA RAIZ
+-------------------------
+install.sh / install.ps1 → instalação automática (Unix / Windows)
+ecc_dashboard.py         → dashboard de status/métricas do ambiente ECC
+CLAUDE.md / AGENTS.md    → instruções para o agente operar no projeto
+SOUL.md, RULES.md, WORKING-CONTEXT.md → filosofia, regras e gestão de contexto
+the-longform-guide.md / the-shortform-guide.md / the-security-guide.md → guias
+README.md (+ traduções: zh-CN, e docs/ em pt-BR, zh-TW, ja-JP, ko-KR, tr)
+EVALUATION.md, REPO-ASSESSMENT.md, CHANGELOG.md, VERSION → avaliação e versionamento
+
+OBSERVAÇÃO (fork)
+-----------------
+Fork espelho do upstream affaan-m/ECC. README/código/guias são de terceiros — não editar.
+Push deste repo vai só para o SEU fork no GitHub. Útil como referência/biblioteca de
+skills, agents, commands e rules para os seus próprios projetos de IA.
