@@ -10,6 +10,7 @@ unset CLAUDECODE
 
 SLEEP_PID=""
 USR1_FIRED=0
+PENDING_ANALYSIS=0
 ANALYZING=0
 LAST_ANALYSIS_EPOCH=0
 # Minimum seconds between analyses (prevents rapid re-triggering)
@@ -81,6 +82,28 @@ exit_if_idle_without_sessions() {
     echo "[$(date)] Observer idle without active session leases for ${idle_for}s; exiting" >> "$LOG_FILE"
     cleanup
   fi
+}
+
+wait_for_claude_analysis() {
+  local child_pid="$1"
+  local wait_status=0
+
+  while true; do
+    wait "$child_pid"
+    wait_status=$?
+
+    if [ "$wait_status" -eq 0 ]; then
+      return 0
+    fi
+
+    # SIGUSR1 can interrupt wait while the Claude child is still running.
+    # Re-wait in that case so a signal is not logged as a false child failure.
+    if kill -0 "$child_pid" 2>/dev/null; then
+      continue
+    fi
+
+    return "$wait_status"
+  done
 }
 
 analyze_observations() {
@@ -182,9 +205,22 @@ PROMPT
   fi
 
   timeout_seconds="${ECC_OBSERVER_TIMEOUT_SECONDS:-120}"
-  max_turns="${ECC_OBSERVER_MAX_TURNS:-20}"
+  # Auto-scale max_turns proportional to analysis batch size when not explicitly set.
+  # The old hardcoded default of 20 is insufficient for the 500-line MAX_ANALYSIS_LINES
+  # default: Claude hits --max-turns before it can write all discovered instinct files.
+  # Formula: 1 turn per 10 analysis lines, floor 20, cap 100. (#2035)
+  if [ -n "${ECC_OBSERVER_MAX_TURNS:-}" ]; then
+    max_turns="${ECC_OBSERVER_MAX_TURNS}"
+  else
+    max_turns=$(( analysis_count / 10 ))
+    if [ "$max_turns" -lt 20 ]; then max_turns=20; fi
+    if [ "$max_turns" -gt 100 ]; then max_turns=100; fi
+  fi
   exit_code=0
 
+  # Sanitize max_turns. The auto-scaled path above always yields a valid value >=20,
+  # but an explicit ECC_OBSERVER_MAX_TURNS override may be non-numeric, empty, or too
+  # small, so guard here and fall back to the safe default of 20.
   case "$max_turns" in
     ''|*[!0-9]*)
       max_turns=20
@@ -217,7 +253,7 @@ PROMPT
   ) &
   watchdog_pid=$!
 
-  wait "$claude_pid"
+  wait_for_claude_analysis "$claude_pid"
   exit_code=$?
   kill "$watchdog_pid" 2>/dev/null || true
   rm -f "$analysis_file"
@@ -236,13 +272,16 @@ PROMPT
 on_usr1() {
   [ -n "$SLEEP_PID" ] && kill "$SLEEP_PID" 2>/dev/null
   SLEEP_PID=""
-  USR1_FIRED=1
 
-  # Re-entrancy guard: skip if analysis is already running (#521)
+  # Re-entrancy guard: defer the nudge so the main loop runs a follow-up
+  # analysis immediately after the current analysis finishes.
   if [ "$ANALYZING" -eq 1 ]; then
-    echo "[$(date)] Analysis already in progress, skipping signal" >> "$LOG_FILE"
+    PENDING_ANALYSIS=1
+    echo "[$(date)] Analysis already in progress, deferring signal" >> "$LOG_FILE"
     return
   fi
+
+  USR1_FIRED=1
 
   # Cooldown: skip if last analysis was too recent (#521)
   now_epoch=$(date +%s)
@@ -268,6 +307,17 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 while true; do
   exit_if_idle_without_sessions
+
+  if [ "$PENDING_ANALYSIS" -eq 1 ]; then
+    PENDING_ANALYSIS=0
+    USR1_FIRED=0
+    ANALYZING=1
+    analyze_observations
+    LAST_ANALYSIS_EPOCH=$(date +%s)
+    ANALYZING=0
+    continue
+  fi
+
   sleep "$OBSERVER_INTERVAL_SECONDS" &
   SLEEP_PID=$!
   wait "$SLEEP_PID" 2>/dev/null
@@ -277,6 +327,9 @@ while true; do
   if [ "$USR1_FIRED" -eq 1 ]; then
     USR1_FIRED=0
   else
+    ANALYZING=1
     analyze_observations
+    LAST_ANALYSIS_EPOCH=$(date +%s)
+    ANALYZING=0
   fi
 done

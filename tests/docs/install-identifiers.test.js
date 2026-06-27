@@ -35,12 +35,12 @@ console.log('\n=== Testing public install identifiers ===\n');
 for (const relativePath of publicInstallDocs) {
   const content = fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
 
-  test(`${relativePath} does not use the stale ecc@ecc plugin identifier`, () => {
-    assert.ok(!content.includes('ecc@ecc'));
+  test(`${relativePath} does not use the overlong legacy marketplace plugin identifier`, () => {
+    assert.ok(!content.includes('everything-claude-code@everything-claude-code'));
   });
 
-  test(`${relativePath} documents the canonical marketplace plugin identifier`, () => {
-    assert.ok(content.includes('everything-claude-code@everything-claude-code'));
+  test(`${relativePath} documents the short marketplace plugin identifier`, () => {
+    assert.ok(content.includes('ecc@ecc'));
   });
 }
 
@@ -48,6 +48,23 @@ const pluginAndManualInstallDocs = [
   'README.md',
   'README.zh-CN.md',
   'docs/zh-CN/README.md',
+];
+
+const publicCommandNamespaceDocs = [
+  'README.md',
+  'README.zh-CN.md',
+  'docs/pt-BR/README.md',
+  'docs/tr/README.md',
+  'docs/ko-KR/README.md',
+  'docs/ja-JP/README.md',
+  'docs/zh-CN/README.md',
+  'docs/zh-TW/README.md',
+];
+
+const manualClaudeSkillInstallDocs = [
+  'README.md',
+  'docs/de-DE/README.md',
+  'docs/ru/README.md',
 ];
 
 for (const relativePath of pluginAndManualInstallDocs) {
@@ -66,6 +83,36 @@ for (const relativePath of pluginAndManualInstallDocs) {
       content.includes('不要再运行')
       || content.includes('do not run'),
       'Expected docs to warn that plugin install and full install are not sequential'
+    );
+  });
+}
+
+for (const relativePath of publicCommandNamespaceDocs) {
+  const content = fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
+
+  test(`${relativePath} uses the canonical plugin command namespace`, () => {
+    assert.ok(
+      !content.includes('/everything-claude-code:'),
+      'Expected docs not to advertise the overlong legacy plugin command namespace'
+    );
+    assert.ok(
+      content.includes('/ecc:plan'),
+      'Expected docs to show the short plugin command namespace'
+    );
+  });
+}
+
+for (const relativePath of manualClaudeSkillInstallDocs) {
+  const content = fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
+
+  test(`${relativePath} keeps manual Claude skill installs top-level`, () => {
+    assert.ok(
+      !/^\s*#?\s*(mkdir\s+-p|md\s+.*|cp\s+.*|copy\s+.*|cpi\s+.*|New-Item\s+.*|Copy-Item\s+.*)\s+.*(~|\$HOME)[\\/]\.claude[\\/]skills[\\/]ecc([\\/]|\b)/mi.test(content),
+      'Claude Code does not discover skills installed by commands targeting ~/.claude/skills/ecc'
+    );
+    assert.ok(
+      content.includes('~/.claude/skills/'),
+      'Expected manual install docs to copy skills into direct ~/.claude/skills children'
     );
   });
 }
